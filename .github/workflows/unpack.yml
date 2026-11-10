@@ -1,0 +1,34 @@
+name: Unpack data pack
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - data-pack.zip
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip data pack
+        run: |
+          set -e
+          if [ ! -f data-pack.zip ]; then echo "No data-pack.zip found"; ls -la; exit 1; fi
+          unzip -o data-pack.zip -d _unpacked
+          if [ -f _unpacked/deliveries.csv ]; then mv _unpacked/deliveries.csv ./deliveries.csv; else CSV=$(find _unpacked -type f -name deliveries.csv -print -quit); if [ -n "$CSV" ]; then mv "$CSV" ./deliveries.csv; fi; fi
+          rm -rf _unpacked data-pack.zip
+          ls -lh deliveries.csv
+          git status --short
+      - name: Commit unpacked data
+        run: |
+          git config user.name "Suraj881711"
+          git config user.email "Suraj881711@users.noreply.github.com"
+          git add -A
+          git commit -m "Unpack deliveries data pack" || echo "Nothing to commit"
+          git push
