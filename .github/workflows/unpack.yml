@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - data-pack.zip
+      - ipl-deliveries-pack.zip
 
 permissions:
   contents: write
@@ -19,10 +19,10 @@ jobs:
       - name: Unzip data pack
         run: |
           set -e
-          if [ ! -f data-pack.zip ]; then echo "No data-pack.zip found"; ls -la; exit 1; fi
-          unzip -o data-pack.zip -d _unpacked
+          if [ ! -f ipl-deliveries-pack.zip ]; then echo "No ipl-deliveries-pack.zip found"; ls -la; exit 1; fi
+          unzip -o ipl-deliveries-pack.zip -d _unpacked
           if [ -f _unpacked/deliveries.csv ]; then mv _unpacked/deliveries.csv ./deliveries.csv; else CSV=$(find _unpacked -type f -name deliveries.csv -print -quit); if [ -n "$CSV" ]; then mv "$CSV" ./deliveries.csv; fi; fi
-          rm -rf _unpacked data-pack.zip
+          rm -rf _unpacked ipl-deliveries-pack.zip
           ls -lh deliveries.csv
           git status --short
       - name: Commit unpacked data
