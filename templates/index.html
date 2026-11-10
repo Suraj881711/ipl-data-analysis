@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPL Data Analysis Dashboard</title>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #f5f6fa; color: #222; }
+  header { background: #0b2545; color: #fff; padding: 22px 16px; text-align: center; }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 18px 14px 40px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 26px; }
+  .card { flex: 1 1 150px; background: #fff; border-radius: 10px; padding: 16px;
+          box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
+  .card .num { font-size: 28px; font-weight: 700; color: #0b2545; }
+  .card .lbl { font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: .04em; }
+  section { background: #fff; border-radius: 10px; padding: 18px; margin-bottom: 22px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h2 { margin-top: 0; font-size: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid #e5e7eb; padding: 7px 9px; text-align: left; }
+  th { background: #eef2f7; }
+  td.n, th.n { text-align: right; }
+  img.chart { max-width: 100%; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
+  .bar-name { width: 52px; text-transform: capitalize; }
+  .bar { background: #1f77b4; height: 14px; border-radius: 3px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏏 IPL Data Analysis</h1>
+  <div>Seasons {{ summary.season_range }} · computed live from matches.csv{% if has_deliveries %} + deliveries.csv{% endif %}</div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card"><div class="num">{{ summary.total_matches }}</div><div class="lbl">Matches</div></div>
+    <div class="card"><div class="num">{{ summary.seasons }}</div><div class="lbl">Seasons</div></div>
+    <div class="card"><div class="num">{{ summary.teams }}</div><div class="lbl">Teams</div></div>
+    <div class="card"><div class="num">{{ summary.venues }}</div><div class="lbl">Venues</div></div>
+    <div class="card"><div class="num">{{ summary.cities }}</div><div class="lbl">Cities</div></div>
+    <div class="card"><div class="num">{{ toss.toss_win_pct }}%</div><div class="lbl">Toss winners who won the match</div></div>
+  </div>
+
+  <section>
+    <h2>Most successful teams</h2>
+    <img class="chart" src="{{ url_for('static', filename='charts/wins_by_team.png') }}" alt="Wins by team">
+    <table>
+      <tr><th>Team</th><th class="n">Played</th><th class="n">Wins</th><th class="n">Win %</th></tr>
+      {% for team, row in wins.iterrows() %}
+      <tr><td>{{ team }}</td><td class="n">{{ row.played|int }}</td><td class="n">{{ row.wins }}</td><td class="n">{{ row.win_pct }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Matches per season</h2>
+    <img class="chart" src="{{ url_for('static', filename='charts/matches_per_season.png') }}" alt="Matches per season">
+    <table>
+      <tr><th>Season</th><th class="n">Matches</th></tr>
+      {% for season, count in season_counts.items() %}
+      <tr><td>{{ season }}</td><td class="n">{{ count }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <div class="cols">
+    <section>
+      <h2>Top players — Player of the Match</h2>
+      <img class="chart" src="{{ url_for('static', filename='charts/top_players.png') }}" alt="Top players">
+      <table>
+        <tr><th>Player</th><th class="n">Awards</th></tr>
+        {% for player, awards in players.items() %}
+        <tr><td>{{ player }}</td><td class="n">{{ awards }}</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    <section>
+      <h2>Toss analysis</h2>
+      <p>Winning the toss led to a match win in <strong>{{ toss.toss_win_pct }}%</strong> of decided matches.</p>
+      <h3>Toss decision share</h3>
+      {% for decision, share in toss.decision_share.items() %}
+      <div class="bar-row"><span class="bar-name">{{ decision }}</span>
+        <span class="bar" style="width: {{ share * 3 }}px"></span><span>{{ share }}%</span></div>
+      {% endfor %}
+      <h3>Toss winner → match winner, by decision</h3>
+      {% for decision, pct in toss.by_decision.items() %}
+      <div class="bar-row"><span class="bar-name">{{ decision }}</span>
+        <span class="bar" style="width: {{ pct * 3 }}px; background:#2ca02c"></span><span>{{ pct }}%</span></div>
+      {% endfor %}
+    </section>
+  </div>
+
+  {% if batting is not none %}
+  <section>
+    <h2>Top run scorers (ball-by-ball)</h2>
+    <img class="chart" src="{{ url_for('static', filename='charts/top_scorers.png') }}" alt="Top run scorers">
+    <table>
+      <tr><th>Batter</th><th class="n">Runs</th><th class="n">Balls</th><th class="n">Strike rate</th></tr>
+      {% for batter, row in batting.iterrows() %}
+      <tr><td>{{ batter }}</td><td class="n">{{ row.runs }}</td><td class="n">{{ row.balls }}</td><td class="n">{{ row.strike_rate }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+  {% endif %}
+
+  {% if bowling is not none %}
+  <section>
+    <h2>Top wicket takers (ball-by-ball, run outs excluded)</h2>
+    <table>
+      <tr><th>Bowler</th><th class="n">Wickets</th></tr>
+      {% for bowler, wkts in bowling.items() %}
+      <tr><td>{{ bowler }}</td><td class="n">{{ wkts }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+  {% endif %}
+
+  <p style="color:#666;font-size:13px">Dataset: IPL Complete Dataset (2008–2024), source Cricsheet via Kaggle —
+  see README.md for the exact download link. Renamed franchises are merged (e.g. Delhi Daredevils → Delhi Capitals).</p>
+</main>
+</body>
+</html>
